@@ -5,6 +5,23 @@ import rl "vendor:raylib"
 update :: proc() {
 	rl.UpdateCameraPro(&camera, get_movement(), get_rotation(), 0)
 	debug(camera)
+
+
+	wp := rl.GetWindowPosition()
+	debug(wp)
+	if rl.IsKeyDown(.LEFT) {
+		wp.x -= 10
+	}
+	if rl.IsKeyDown(.RIGHT) {
+		wp.x += 10
+	}
+	if rl.IsKeyDown(.UP) {
+		wp.y -= 10
+	}
+	if rl.IsKeyDown(.DOWN) {
+		wp.y += 10
+	}
+	rl.SetWindowPosition(i32(wp.x), i32(wp.y))
 }
 
 SPEED :: .6
