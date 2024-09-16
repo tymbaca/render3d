@@ -8,6 +8,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
+@(private)
 Data :: struct {
 	vs:      []Vertex,
 	vns:     []VertexNormal,
@@ -15,12 +16,14 @@ Data :: struct {
 	objects: []Object,
 }
 
+@(private)
 Object :: struct {
-	name:  string,
-	s:     Smoothing,
-	faces: [dynamic]Face,
+	name:      string,
+	smoothing: Smoothing,
+	faces:     [dynamic]Face,
 }
 
+@(private)
 Statement :: union {
 	ObjectDecl,
 	Vertex,
@@ -39,16 +42,28 @@ Parse_Error :: struct {
 	msg:  string,
 }
 
+@(private)
 ObjectDecl :: distinct string
+
+@(private)
 Vertex :: distinct mesh.Vector3
+
+@(private)
 VertexNormal :: distinct mesh.Vector3
+
+@(private)
 VertexTexture :: distinct mesh.Vector2
+
+@(private)
 Smoothing :: distinct bool
+
+@(private)
 Face :: distinct []FacePoint
 
+@(private)
 FacePoint :: [3]int
 
-parse_mesh :: proc(lines: []string) -> ([]mesh.Mesh, Error) {
+parse_meshes :: proc(lines: []string) -> ([]mesh.Mesh, Error) {
 	stmts, err := parse_stmts(lines)
 	defer delete(stmts)
 	if err != nil do return nil, err
@@ -58,6 +73,7 @@ parse_mesh :: proc(lines: []string) -> ([]mesh.Mesh, Error) {
 	return data_to_meshs(data), nil
 }
 
+@(private)
 parse_stmts :: proc(lines: []string, alloc := context.allocator) -> ([]Statement, Error) {
 	context.allocator = alloc
 	defer free_all(context.temp_allocator)
@@ -72,14 +88,15 @@ parse_stmts :: proc(lines: []string, alloc := context.allocator) -> ([]Statement
 
 		p: Statement
 
+		argsCount := len(parts) - 1
 		switch parts[0] {
 		case "o":
-			if len(parts) != 2 do return nil, Parse_Error{line = i + 1, msg = "object stmt must have 2 parts"}
+			if argsCount != 1 do return nil, Parse_Error{line = i + 1, msg = "object stmt must have 2 parts"}
 
 			p = ObjectDecl(strings.clone(parts[1]))
 
 		case "v":
-			if len(parts) != 4 do return nil, Parse_Error{line = i + 1, msg = "vertex stmt must have 3 coords"}
+			if argsCount != 3 do return nil, Parse_Error{line = i + 1, msg = "vertex stmt must have 3 coords"}
 
 			x, y, z: f32
 			ok: bool
@@ -96,11 +113,32 @@ parse_stmts :: proc(lines: []string, alloc := context.allocator) -> ([]Statement
 			p = Vertex{x, y, z}
 
 		case "vt":
-			// TODO
-			continue
+			if argsCount != 2 do return nil, Parse_Error{line = i + 1, msg = "vertex texture stmt must have 2 coords (i don't yet support 3)"}
+			x, y: f32
+			ok: bool
+
+			x, ok = parse_f32(parts[1])
+			if !ok do return nil, Parse_Error{line = i + 1, msg = "can't parse to float, 1st coord"}
+
+			y, ok = parse_f32(parts[2])
+			if !ok do return nil, Parse_Error{line = i + 1, msg = "can't parse to float, 2st coord"}
+
+			p = VertexTexture{x, y}
 		case "vn":
-			// TODO
-			continue
+			if argsCount != 3 do return nil, Parse_Error{line = i + 1, msg = "vertex normal stmt must have 3 coords"}
+			x, y, z: f32
+			ok: bool
+
+			x, ok = parse_f32(parts[1])
+			if !ok do return nil, Parse_Error{line = i + 1, msg = "can't parse to float, 1st coord"}
+
+			y, ok = parse_f32(parts[2])
+			if !ok do return nil, Parse_Error{line = i + 1, msg = "can't parse to float, 2st coord"}
+
+			z, ok = parse_f32(parts[3])
+			if !ok do return nil, Parse_Error{line = i + 1, msg = "can't parse to float, 3st coord"}
+
+			p = VertexNormal{x, y, z}
 		case "f":
 			if len(parts) < 4 do return nil, Parse_Error{line = i + 1, msg = "face stmt must have at least 3 points"}
 			points := make([dynamic]FacePoint, 0, len(parts) - 1)
@@ -129,6 +167,8 @@ parse_stmts :: proc(lines: []string, alloc := context.allocator) -> ([]Statement
 
 			p = Face(points[:])
 
+		//case "s":
+
 		case:
 			continue
 		}
@@ -140,40 +180,41 @@ parse_stmts :: proc(lines: []string, alloc := context.allocator) -> ([]Statement
 	return stmts[:], nil
 }
 
+@(private)
 form_data :: proc(props: []Statement) -> Data {
 	vs := make([dynamic]Vertex)
+	vts := make([dynamic]VertexTexture)
+	vns := make([dynamic]VertexNormal)
 	objects := make([dynamic]Object)
 
-	active_object: Object
 	is_active_object := false
 
 	for prop in props {
-		switch p in prop {
+		switch v in prop {
 		case ObjectDecl:
-			if is_active_object {
-				append(&objects, active_object)
-			}
-
-			active_object = Object {
-				name  = string(p),
-				faces = make([dynamic]Face),
-			}
+			is_active_object = true
+			append(&objects, Object{name = string(v), faces = make([dynamic]Face)})
 		case Vertex:
-			append(&vs, p)
-		case VertexNormal:
-			piss()
+			append(&vs, v)
 		case VertexTexture:
-			piss()
+			append(&vts, v)
+		case VertexNormal:
+			append(&vns, v)
 		case Face:
-			append(&active_object.faces, p)
+			if is_active_object {
+				append(&objects[len(objects) - 1].faces, v) // add to last object faces
+			}
 		case Smoothing:
-			piss()
+			if is_active_object {
+				objects[len(objects) - 1].smoothing = v
+			}
 		}
 	}
 
 	return Data{vs = vs[:], objects = objects[:]}
 }
 
+@(private)
 data_free :: proc(data: Data) {
 	delete(data.vs)
 	delete(data.vts)
@@ -185,6 +226,7 @@ data_free :: proc(data: Data) {
 	}
 }
 
+@(private)
 data_to_meshs :: proc(data: Data) -> []mesh.Mesh {
 	meshs := make([dynamic]mesh.Mesh, 0, len(data.objects))
 
@@ -222,11 +264,13 @@ data_to_meshs :: proc(data: Data) -> []mesh.Mesh {
 	return meshs[:]
 }
 
+@(private)
 shit :: proc(msg := "this feature is not supported") {
 	final_msg := fmt.aprint("shit: %s", msg)
 	panic(final_msg)
 }
 
+@(private)
 piss :: proc(msg := "this feature is not supported") {
 	fmt.printf("shit: %s", msg)
 }

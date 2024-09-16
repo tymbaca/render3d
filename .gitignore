@@ -1,1 +1,4 @@
 app
+obj
+.vscode
+DS_Store
