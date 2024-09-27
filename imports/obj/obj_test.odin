@@ -1,4 +1,4 @@
-package obj_test
+package obj
 
 import "../../mesh"
 import "core:fmt"

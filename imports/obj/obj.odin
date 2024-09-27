@@ -1,6 +1,7 @@
 package obj
 
 
+import "../../geo"
 import "../../mesh"
 import "core:fmt"
 import "core:log"
@@ -8,60 +9,16 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
-@(private)
-Data :: struct {
-	vs:      []Vertex,
-	vns:     []VertexNormal,
-	vts:     []VertexTexture,
-	objects: []Object,
+
+load :: proc(filename: string) -> ([]mesh.Mesh, Error) {
+	data, ok := os.read_entire_file(filename)
+	if !ok {
+		return nil, Other_Error("can't open the file")
+	}
+
+	lines := strings.split_lines(string(data))
+	return parse_meshes(lines)
 }
-
-@(private)
-Object :: struct {
-	name:      string,
-	smoothing: Smoothing,
-	faces:     [dynamic]Face,
-}
-
-@(private)
-Statement :: union {
-	ObjectDecl,
-	Vertex,
-	VertexNormal,
-	VertexTexture,
-	Face,
-	Smoothing,
-}
-
-Error :: union {
-	Parse_Error,
-}
-
-Parse_Error :: struct {
-	line: int,
-	msg:  string,
-}
-
-@(private)
-ObjectDecl :: distinct string
-
-@(private)
-Vertex :: distinct mesh.Vector3
-
-@(private)
-VertexNormal :: distinct mesh.Vector3
-
-@(private)
-VertexTexture :: distinct mesh.Vector2
-
-@(private)
-Smoothing :: distinct bool
-
-@(private)
-Face :: distinct []FacePoint
-
-@(private)
-FacePoint :: [3]int
 
 parse_meshes :: proc(lines: []string) -> ([]mesh.Mesh, Error) {
 	stmts, err := parse_stmts(lines)
@@ -211,7 +168,9 @@ form_data :: proc(props: []Statement) -> Data {
 		}
 	}
 
-	return Data{vs = vs[:], objects = objects[:]}
+	fmt.println(vns)
+
+	return Data{vs = vs[:], vns = vns[:], vts = vts[:], objects = objects[:]}
 }
 
 @(private)
@@ -245,13 +204,13 @@ data_to_meshs :: proc(data: Data) -> []mesh.Mesh {
 			mesh_face: mesh.Face
 			for point, i in face {
 				v_idx := point[0] - 1 // because .obj uses 1-based indexing (hello tj)
-				mesh_face.vs[i] = mesh.Vector3(data.vs[v_idx])
+				mesh_face.vs[i] = geo.Vector3(data.vs[v_idx])
 
 				// vt_idx := point[1] - 1
-				// mesh_face.vts[i] = data.vts[vt_idx]
+				// mesh_face.vts[i] = mesh.Vector2(data.vts[vt_idx])
 
-				// vn_idx := point[2] - 1
-				// mesh_face.vns[i] = data.vns[vn_idx]
+				vn_idx := point[2] - 1
+				mesh_face.vns[i] = geo.Vector3(data.vns[vn_idx])
 			}
 
 			append(&mesh_faces, mesh_face)

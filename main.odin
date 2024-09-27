@@ -1,28 +1,45 @@
 package main
 
+import "core:fmt"
 import "core:time"
+import "geo"
+import "imports/obj"
+import "mesh"
+import "object"
+import "render"
 import rl "vendor:raylib"
 
 NAME :: "render"
 WIDTH :: 800
 HEIGHT :: 600
 
-camera: rl.Camera
+_camera: rl.Camera
+_objects: [dynamic]object.Object
 
-init_window :: proc() {
+init :: proc() {
 	rl.InitWindow(WIDTH, HEIGHT, NAME)
 	rl.SetTargetFPS(60)
 
-	camera.position = {0, 2, 4}
-	camera.up = {0, 1, 0}
-	camera.target = {0, 0, 1}
-	camera.fovy = 90
-	camera.projection = .PERSPECTIVE
+	_camera.position = {0, 2, 4}
+	_camera.up = {0, 1, 0}
+	_camera.target = {0, 0, 1}
+	_camera.fovy = 90
+	_camera.projection = .PERSPECTIVE
 	rl.DisableCursor()
+
+	meshes, err := obj.load("cube.obj")
+	if err != nil {
+		panic(fmt.aprint(err))
+	}
+
+	for msh in meshes {
+		o := object.new(msh)
+		append(&_objects, o)
+	}
 }
 
 main :: proc() {
-	init_window()
+	init()
 
 	for !rl.WindowShouldClose() {
 		update()
@@ -36,14 +53,13 @@ draw :: proc() {
 
 	// shit here
 
-	rl.BeginMode3D(camera)
-	display()
+	rl.BeginMode3D(_camera)
+
+	for o in _objects {
+		render.render(o)
+	}
+
 	rl.EndMode3D()
 
 	rl.EndDrawing()
-}
-
-
-display :: proc() {
-	rl.DrawPlane({}, {32, 32}, rl.LIGHTGRAY)
 }

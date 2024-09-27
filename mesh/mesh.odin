@@ -1,12 +1,11 @@
 package mesh
 
-Vector3 :: [3]f32
-Vector2 :: [2]f32
+import "../geo"
 
 Face :: struct {
-	vs:  [3]Vector3,
-	vts: [3]Vector3,
-	vns: [3]Vector3,
+	vs:  [3]geo.Vector3,
+	vts: [3]geo.Vector3,
+	vns: [3]geo.Vector3,
 }
 
 Mesh :: struct {

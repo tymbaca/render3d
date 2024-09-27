@@ -3,6 +3,8 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
+DEBUG :: false
+
 debug :: proc(args: ..any) {
-	fmt.println(..args)
+	when DEBUG do fmt.println(..args)
 }

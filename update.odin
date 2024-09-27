@@ -1,12 +1,33 @@
 package main
 
+import "object"
 import rl "vendor:raylib"
 
+SPEED :: .2
+MOUSE_SENSITIVITY :: .1
+MOVE_SPEED :: .5
+
 update :: proc() {
-	rl.UpdateCameraPro(&camera, get_movement(), get_rotation(), 0)
-	debug(camera)
+	if rl.IsKeyDown(.LEFT) {
+		object.rotate(&_objects[0], +0.5, 0, 0)
+	}
+	if rl.IsKeyDown(.RIGHT) {
+		object.rotate(&_objects[0], -0.5, 0, 0)
+	}
+	if rl.IsKeyDown(.UP) {
+		_objects[0].position.y += MOVE_SPEED
+	}
+	if rl.IsKeyDown(.DOWN) {
+		_objects[0].position.y -= MOVE_SPEED
+	}
+
+	//--------------------------------------------------------------------------------------------------
+
+	rl.UpdateCameraPro(&_camera, get_movement(), get_rotation(), 0)
+	debug(_camera)
 
 
+	/*
 	wp := rl.GetWindowPosition()
 	debug(wp)
 	if rl.IsKeyDown(.LEFT) {
@@ -22,10 +43,8 @@ update :: proc() {
 		wp.y += 10
 	}
 	rl.SetWindowPosition(i32(wp.x), i32(wp.y))
+    */
 }
-
-SPEED :: .6
-MOUSE_SENSITIVITY :: 0.1
 
 get_movement :: proc() -> rl.Vector3 {
 	forward := pressed_f32(.W) * SPEED
